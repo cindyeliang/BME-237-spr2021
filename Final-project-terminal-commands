@@ -1,0 +1,55 @@
+#download files from dataset using SRAtoolkit. --split-files command was used for kallisto input only; STAR did not require 2 input files for paired-end reads
+
+#Condition: air (control)
+sratoolkit.2.11.0-ubuntu64/bin/fastq-dump --split-files SRR6347892 #1air
+sratoolkit.2.11.0-ubuntu64/bin/fastq-dump --split-files SRR6347893 #2air
+sratoolkit.2.11.0-ubuntu64/bin/fastq-dump --split-files SRR6347894 #3air
+
+#Condition: CSC (treatment)
+sratoolkit.2.11.0-ubuntu64/bin/fastq-dump --split-files SRR6347895 #1csc
+sratoolkit.2.11.0-ubuntu64/bin/fastq-dump --split-files SRR6347896 #2csc
+sratoolkit.2.11.0-ubuntu64/bin/fastq-dump --split-files SRR6347897 #3csc
+
+#QC with fastp: run this command for each file. Input: fastq sequence from SRA. Output: filtered fastq sequence, Reports of sequencing statistics (JSON, HTML)
+fastp -i <SRR634789N.fq> -o <output/directory/newfile.fq>
+
+#QC with fastQC. Input: fastq from SRA. Output: HTML report.
+</path/to/>FastQC/fastqc <SRR634789N.fq> -o <output_directory>
+
+#///Differential gene expression pipeline 1///
+#STAR -> HTSEQ-count -> DESeq2 (on R)
+
+#align with STAR. Input: filtered fastq from fastp. Output: .bam alignments.
+#creation of STAR index (only needs to be done once)
+</path/to/>STAR/bin/Linux_x86_64/STAR --runMode genomeGenerate --runThreadN 20 --genomeDir </path/to/directory/of/index/> --genomeFastaFiles </path/to/genome.fa> --sjdbGTFfile </path/to/genomeannotation.gtf>
+
+#running STAR to align input sequence to genomic reference
+</path/to/>STAR/bin/Linux_x86_64/STAR --runThreadN 16 --genomeDir </path/to/directory/of/index/> --outSAMtype BAM SortedByCoordinate --readFilesIn </path/to/fastpfiltered_sample.fq> --twopassMode Basic --outFileNamePrefix <sample#condition>
+
+#get gene counts from aligned files using HTSeq-count. Input: aligned .bam from STAR. Output: .txt listing genes and # alignments to the genes (gene counts).
+python <path/to/>HTSeq/scripts/count.py -f bam -r pos <sample.bam> <annotation.gtf> > <counts_sample.txt>
+
+#///Differential gene expression pipeline 2///
+#Kallisto -> Sleuth (on R)
+
+#Run Kallisto. Input: filtered fastq from fastp. Output: .h5 of gene counts.
+#Install prebuilt Kallisto transcriptome index (only needs to be done once)
+wget https://github.com/pachterlab/kallisto-transcriptome-indices/releases/download/ensembl-96/homo_sapiens.tar.gz
+tar -xvf homo_sapiens.tar.gz
+
+#use RSeQC to infer strandedness of sample libraries
+python2 /private/groups/brookslab/bin/RSeQC-2.6.4/scripts/infer_experiment.py -i <sample.bam> -r <path/to/reference.bed>
+#Conclusion: Reverse strand 
+
+#run Kallisto to pseudoalign fastp-filtered sequences with Kallisto transcriptome index. --rf-stranded is used for reverse strand libraries. --peudobam was used in case I wanted to look at the pseudoalignments on a genome browser.
+kallisto quant -i <index prefix> -o </output/directory/> --rf-stranded --fusion --pseudobam -g </path/to/transcript_annotation.gtf> -t 160 -b 160 </path/to/fastpfiltered_sample_read1.fq> </path/to/fastpfiltered_sample_read2.fq>
+
+#Once HTSeq-count and Kallisto output are obtained, R can be used to analyze the data for differential gene expression.
+
+#QC: command line awk arguments to count # of genes detected by Kallisto & HTSeq-count
+#kallisto h5 output
+awk -F '\t' '{sum+=$4;} END{print sum;}' file.txt
+
+#htseqcount .txt output
+awk -F '\t' '{sum+=$2;} END{print sum;}' file.txt
+
