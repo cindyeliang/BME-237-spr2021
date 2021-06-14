@@ -1,0 +1,83 @@
+###Some peaks will overlap multiple pre-mRNA regions within a single gene because of several isoforms of the gene.###
+###In the Van Nostrand et al. paper, the peak annotation was chosen in the following priority order: CDS > 3'UTR > 5'UTR > intron.###
+###For example, if a peak is found within the CDS of one transcript but the intron of another transcript (due to alternative splicing), then the annotation selected will be CDS.###
+
+#Reproducible UPF1 eCLIP peaks per region
+
+##CDS##
+</path/to/>bedtools2/bin/intersectBed -wa -a ENCFF597NVR.bed.gz -b cds.bed -s -u > rep_cds.bed
+wc -l rep_cds.bed
+###487###
+
+##3' UTR## 
+#Unfiltered 3UTR
+</path/to/>bedtools2/bin/intersectBed -wa -a ENCFF597NVR.bed.gz -b 3utr.bed -s -u > rep_3utr.bed
+wc -l rep_3utr.bed
+#12885
+
+#True 3UTR = unfiltered 3UTR - CDS
+</path/to/>bedtools2/bin/subtractBed -f 1 -r -s -A -a rep_3utr.bed -b rep_cds.bed | wc -l
+###12544###
+
+##5'UTR##
+#Unfiltered 5UTR
+</path/to/>bedtools2/bin/intersectBed -wa -a ENCFF597NVR.bed.gz -b 5utr.bed -s -u > rep_5utr.bed
+wc -l rep_5utr.bed
+#1868
+
+#True 5UTR = 5UTR - CDS - 3UTR
+</path/to/>bedtools2/bin/subtractBed -f 1 -r -s -A -a rep_5utr.bed -b rep_cds.bed > rep_5utr-cds.bed
+</path/to/>bedtools2/bin/subtractBed -f 1 -r -s -A -a rep_5utr-cds.bed -b rep_3utr.bed | wc -l
+###127###
+
+##INTRON##
+#Unfiltered intron
+</path/to/>bedtools2/bin/intersectBed -wa -a ENCFF597NVR.bed.gz -b introns.bed -s -u > rep_introns.bed
+wc -l rep_introns.bed
+#3707
+
+#True intron = intron - cds - 3utr - 5utr
+</path/to/>bedtools2/bin/subtractBed -f 1 -r -s -A -a rep_introns.bed -b rep_cds.bed > rep_introns-cds.bed
+</path/to/>bedtools2/bin/subtractBed -f 1 -r -s -A -a rep_introns-cds.bed -b rep_3utr.bed > rep_introns-cds-3utr.bed 
+</path/to/>bedtools2/bin/subtractBed -f 1 -r -s -A -a rep_introns-cds-3utr.bed -b rep_5utr.bed | wc -l 
+###243###
+
+#Reproducible PTPB1 eCLIP peaks per region
+
+##CDS##
+</path/to/>bedtools2/bin/intersectBed -wa -a ENCFF907HNN.bed.gz -b cds.bed -s -u > ptpb1_cds.bed
+wc -l ptpb1_cds.bed
+###106###
+
+##3UTR##
+#Unfiltered 3utr
+</path/to/>bedtools2/bin/intersectBed -wa -a ENCFF907HNN.bed.gz -b 3utr.bed -s -u > ptpb1_3utr.bed 
+wc -l ptpb1_3utr.bed
+#772 
+
+#True 3UTR = unfiltered 3UTR - CDS
+</path/to/>bedtools2/bin/subtractBed -f 1 -r -s -A -a ptpb1_3utr.bed -b ptpb1_cds.bed | wc -l
+###732###
+
+##5UTR##
+#Unfiltered 5utr
+</path/to/>bedtools2/bin/intersectBed -wa -a ENCFF907HNN.bed.gz -b 5utr.bed -s -u > ptpb1_5utr.bed 
+wc -l ptpb1_5utr.bed
+#472
+
+#True 5UTR = 5UTR - CDS - 3UTR
+</path/to/>bedtools2/bin/subtractBed -f 1 -r -s -A -a ptpb1_5utr.bed -b ptpb1_cds.bed > ptpb1_5utr-cds.bed
+</path/to/>bedtools2/bin/subtractBed -f 1 -r -s -A -a ptpb1_5utr-cds.bed -b ptpb1_3utr.bed | wc -l
+###391###
+
+##INTRONS##
+#Unfiltered introns
+</path/to/>bedtools2/bin/intersectBed -wa -a ENCFF907HNN.bed.gz -b introns.bed -s -u > ptpb1_introns.bed
+wc -l ptpb1_introns.bed
+#7471
+
+#True intron = intron - cds - 3utr - 5utr
+</path/to/>bedtools2/bin/subtractBed -f 1 -r -s -A -a ptpb1_introns.bed -b ptpb1_cds.bed > ptpb1_introns-cds.bed
+</path/to/>bedtools2/bin/subtractBed -f 1 -r -s -A -a ptpb1_introns-cds.bed -b ptpb1_3utr.bed > ptpb1_introns-cds-3utr.bed 
+</path/to/>bedtools2/bin/subtractBed -f 1 -r -s -A -a ptpb1_introns-cds-3utr.bed -b ptpb1_5utr.bed | wc -l 
+###6567###
