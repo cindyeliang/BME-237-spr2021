@@ -1,0 +1,55 @@
+##STAR##
+#Input: fastq. Output: .bam alignments.
+#Create STAR index 
+</path/to>/STAR/bin/Linux_x86_64/STAR --runMode genomeGenerate --runThreadN 20 --genomeDir </star/database/directory> --genomeFastaFiles </path/to/genome.fa> --sjdbGTFfile </path/to/annotation.gtf> --sjdbOverhang 75
+
+#alignment with STAR.
+</path/to>/STAR/bin/Linux_x86_64/STAR --runThreadN 16 --genomeDir </star/database/directory> --outSAMtype BAM SortedByCoordinate --readFilesIn </path/to/read1.fastq> </path/to/read2.fastq> --twopassMode Basic --outFileNamePrefix <output_prefix>
+
+##HISAT2##
+#Input: fastq. Output: .sam alignments
+#Create HISAT2 index
+hisat2-build -f </path/to/genome.fa> <index_name>
+
+#Align with HISAT2
+$ hisat2 -q -x index -1 </path/to/read1.fq> -2 </path/to/read2.fq> -S <outputfile.sam>
+
+#Use samtools to convert HISAT2 sam->bam. Input: .sam. Output: .bam.
+samtools view -S -b sample.sam > sample.bam
+
+#sort .bam from HISAT2 & STAR using samtools. Input: .bam. Output: sorted.bam
+samtools sort -m 150G <alignments.bam> <sorted_output_name>
+
+#index sorted.bam from HISAT2 and STAR:
+samtools index <sorted_output>.bam <indexed_output_name>
+
+#Use RSeQC to detect library strandedness for regtools
+python </path/to/>RSeQC-2.6.4/scripts/infer_experiment.py -i <input>.bam -r </path/to/RefSeq.bed> -s 400000
+#Conclusion: first strand (use -s 1 for regtools)
+
+##Create splice junction counts with regtools. Input: sorted input.bam (in the same directory as sorted.bam.bai files). Output: .txt with splice junctions
+</path/to/>regtools junctions extract -s 1 -o <output_name.txt> <sorted_input.bam>
+
+#Count # SJs found by regtools for STAR vs. HISAT2 alignment
+wc -l <regtoolsSJ.txt>
+
+#Find a splice junction that was detected by STAR, but not detected by HISAT2. What is the chromosome, start position, and end position of the intron that corresponds to this splice junction?
+#This was done by viewing STAR & HISAT2 alignments on IGV. Zooming in on chromosome 1 with the viewer, it is possible to obtain IDs of reads spanning splice junctions visualized by IGV's sashimi plot. STAR alignments were visualized on IGV and 3 read IDs spanning a splce junction in chromosome 1 were collected. 
+#samtools view & grep was used to search for these read IDs on the HISAT2 alignment.
+#Example:
+
+#PRESLEY_0023_FC61FLEAAXX:5:78:6607:11564#0 was a read ID found on the STAR alignment to align to a splice junction in chromosome 1.
+
+samtools view -s </path/to/hisat2.bam> grep "PRESLEY_0023_FC61FLEAAXX:5:78:6607:11564#0"
+
+#This command outputs every read with the read ID PRESLEY_0023_FC61FLEAAXX:5:78:6607:11564#0 in the HISAT2 alignment
+
+#Chromosome, start position, and CIGAR string for each read with ID PRESLEY_0023_FC61FLEAAXX:5:78:6607:11564#0 in the HISAT2 alignment:
+#Chr16 16564 76M
+#Chr16 16734 5M177N70M1S
+#Chr1 16881 76M
+#Chr1 17051 5M177N70M1
+#Chr1 187403 76M
+#Chr1 187573 5M177N70M1S
+#Chr1 16881 76M
+#Chr1 187573 5M177N70M1S
