@@ -1,0 +1,47 @@
+##Terminal commands##
+
+#hisat alignment of reads using reference index made in ps1
+/private/home/celiang/hisat2-2.2.1/hisat2 -q -t -x index -1 /scratch/celiang/bme237hw2/SRR493372_1.fastq -2 /scratch/celiang/bme237hw2/SRR493372_2.fastq -S ctrl_r1.sam
+
+#generate gene counts
+python /private/home/celiang/.local/lib/python2.7/site-packages/HTSeq/scripts/count.py -f sam -r pos ctrl_r1.sam gencode.v37.annotation.gtf > ctrl_rep1_counts.txt
+
+#####DESeq2 R script#####
+
+setwd("C:/Users/liang/Desktop/BMEPS2")
+directory <- "C:/Users/liang/Desktop/BMEPS2"
+sampleFiles <- list.files()
+sampleFiles
+
+sampleCondition <- c('KD','KD','KD','WT','WT','WT')
+sampleTable <-data.frame(sampleName = sampleFiles,
+                         fileName = sampleFiles,
+                         condition = sampleCondition)
+
+library("DESeq2")
+ddsHTSeq <- DESeqDataSetFromHTSeqCount(sampleTable = sampleTable,
+                                       directory = directory,
+                                       design= ~ condition)
+ddsHTSeq
+
+colData(ddsHTSeq)$condition<-factor(colData(ddsHTSeq)$condition, levels=c('air','csc'))
+dds<-DESeq(ddsHTSeq)
+res<-results(dds, alpha=0.01)
+res<-res[order(res$padj),]
+head(res)
+
+#create a subset of data that only passes padj 0.01
+resSig <-subset(res, padj < 0.01)
+resSig
+
+#write resSig as csv
+write.csv(as.data.frame(resSig), file="ps2_p0.01_results.csv")
+
+#count num genes w fdr/padj<0.01
+sum(res$padj <0.01, na.rm=TRUE)
+res
+
+#Merge with normalized count data
+resdata <- merge(as.data.frame(res), as.data.frame(counts(dds, normalized=TRUE)), by="row.names", sort=FALSE)
+names(resdata)[1] <- "Gene"
+head(resdata)
